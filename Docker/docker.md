@@ -147,7 +147,35 @@ CMD ['node', './index.js']
 
 # 容器通信
 
-## 通过数据卷
+## 通过数据卷挂载主机目录
+
+```dockerfile
+docker run -d -P \
+    --name web \
+    # -v /src/webapp:/usr/share/nginx/html \
+    --mount type=bind,source=/src/webapp,target=/usr/share/nginx/html,readonly \
+    nginx:alpine
+```
+
++ 使用 `-v` 参数时如果本地目录不存在 Docker 会自动为你创建一个文件夹，使用 `--mount` 参数时如果本地目录不存在，Docker 会报错
+  + -v 和 --mount 后面参数 (宿主机:容器)
++ 加了 `readonly` 之后，就挂载为 `只读` 了。如果你在容器内 `/usr/share/nginx/html` 目录新建文件,会报错
 
 ## 通过bridge
 
+1. 创建新网络
+
+   + `docker network create -d bridge <network-name>`
+     + `-d` 参数指定 Docker 网络类型，有 `bridge` `overlay`。其中 `overlay` 网络类型用于 [Swarm mode]()
+
+2. 将容器连接到网络
+
+   + `docker run --name busybox1 --network <network-name> busybox`
+     + 启动容器并连接网络
+
+   + `docker network connect <network-name> <container-name>`
+     + 将已启动的容器连接到网络
+
+3. 按名称ping容器
+
+   `docker exec -it <container-name-A> ping <container-name-B>`
