@@ -8,10 +8,34 @@
 /[^\u0020-\u007E\u00A0-\u00BE\u2E80-\uA4CF\uF900-\uFAFF\uFE30-\uFE4F\uFF00-\uFFEF\u0080-\u009F\u2000-\u201f\u2026\u2022\u20ac\r\n]/
 ```
 
-### 2. 校验url地址
+### 2. 校验域名地址
 
 ```js
 /^(?=^.{3,255}$)(http(s)?:\/\/)(www\.)?[a-zA-Z0-9][-a-zA-Z0-9]{0,62}(\.[a-zA-Z0-9][-a-zA-Z0-9]{0,62})+(:\d+)*(\/\w+\.\w+)*([?&]\w+=[\w\u4e00-\u9fa5]*)*$/
+```
+
+### 3. 校验url地址
+
+```js
+/(https?|ftp|file):\/\/[-A-Za-z0-9+&@#/%?=~_|!:,.;]+[-A-Za-z0-9+&@#/%=~_|]/
+```
+
+### 4. 校验ip地址
+
+```js
+/^(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])\.(\d{1,2}|1\d\d|2[0-4]\d|25[0-5])$/
+```
+
+### 5. 校验经度地址
+
+```js
+/^(\-|\+)?(((\d|[1-9]\d|1[0-7]\d|0{1,3})\.\d{0,6})|(\d|[1-9]\d|1[0-7]\d|0{1,3})|180\.0{0,6}|180)$/
+```
+
+### 6. 校验纬度地址
+
+```js
+/^(\-|\+)?([0-8]?\d{1}\.\d{0,6}|90\.0{0,6}|[0-8]?\d{1}|90)$/
 ```
 
 
@@ -279,5 +303,58 @@ export function copyCode(txt) {
     input.setSelectionRange(0, input.value.length), document.execCommand('Copy');
     document.body.removeChild(input);
 }
+```
+
+### 9. js 实现自适应宽度
+
+```js
+/**
+ * @desc 自适应宽度
+ * @param {number} designWidth 设计稿宽带 默认 1920
+ * @param {number} maxWidth 最大宽度，缩大到一定程度不在缩大 默认 无限制
+ * @param {number} minWidth 最小宽度，缩小到一定程度不在缩小 默认 1366
+ * @param {number} base 基准值 默认 100(100px === 1rem)
+ */
+;(({ designWidth = 1920, maxWidth = 2 ** 64, minWidth = 1366, base = 100 }) => {
+  autoComputed();
+  window.addEventListener('resize', autoComputed);
+  function autoComputed() {
+    const html = document.documentElement || document.body;
+    const limitMax = maxWidth / designWidth;
+    const limitMin = minWidth / designWidth;
+    const scale = document.body.offsetWidth / designWidth;
+
+    html.style.fontSize =
+      (
+        (scale < limitMin ? limitMin : scale > limitMax ? limitMax : scale) *
+        base
+      ).toFixed(2) + 'px';
+  }
+})({ designWidth: 1920, minWidth: 1366, base: 100 });
+```
+
+### 10. Iframe 实现自适应高度(通过postMessage)
+
+```js
+/**
+* @desc 通过postMessage实现iframe内容自适应高度
+* @param {string} origin 完整域名(协议+ip+端口号) * 为全部(⚠️)
+*/
+// 子页面
+;((origin) => {
+  window.onload = () => {
+    setInterval(() => {
+      top.postMessage({
+        iframeHeight: Math.max(document.body.scrollHeight, document.documentElement.scrollHeight)
+      }, origin);
+    }, 200)
+  }
+})('http://169.254.47.144:9527')
+// 父页面
+window.addEventListener('message', e => {
+  if (e.data.iframeHeight) {
+    this.iframeHeight = e.data.iframeHeight;
+  }
+});
 ```
 

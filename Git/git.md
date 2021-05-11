@@ -14,28 +14,37 @@ git config --global credential.helper store
 # git 命令操作
 
 ```js
-git clone 远程仓库地址		将远程的代码下到本地
-git pull origin 分支		更新某个分支的代码
-git branch 				查看本地分支
-git branch 分支			创建分支
-git checkout 分支			切换分支
-git checkout -b 分支		创建并切换分支
-git checkout -- file	撤销对工作区修改
-git branch -D 分支		删除本地分支
-git push origin :分支		删除远程仓库分支 
-git branch -l/-r/-a 	查看本地分支/查看远程分支/查看所有分支
-git commit -m "注释"		提交代码到本地暂存区
-git push origin 分支		提交代码到远程仓库 -f 强制提交覆盖 -u 记录git push 默认推送origin master
-git config -l 			查看git配置信息
-git remote show origin			查看某个远程仓库的详细信息
-git status				查看状态
-git log					查看提交历史信息
-git reset --hard 版本号	没必要写完整，前几位就行(六七位),回退版本
-git reset HEAD -- file	清空add命令向暂存区提交的关于file文件的修改
-git reset HEAD^			已经提交了不合适的修改到版本库时，想要撤销本次提交
-git reflog 				查看操作的git记录
-git show 版本号			查看提交的内容
-git diff 				不加参数即默认比较工作区与暂存区
+git clone 远程仓库地址		// 将远程的代码下到本地
+git clone -b 分支 远程仓库地址 // 将远程仓库的指定分支代码下到本地
+git branch -vv // 查看本地分支与远程分支的映射关系
+git branch -u origin/addFile || git branch --set-upstream-to origin/addFile // 建立当前分支与远程分支的映射关系
+git branch --unset-upstream // 撤销本地分支与远程分支的映射关系
+git fetch <远程主机名> //这个命令将某个远程主机的更新全部取回本地
+git fetch <远程主机名> <分支名> //注意之间有空格
+git diff HEAD FETCH_HEAD // 查看本地与fetch下来的区别
+git log -p FETCH_HEAD // 查看fetch下来的信息
+git merge <远程主机名>/<分支名> // 将所在的分支与远程分支进行合并
+git pull origin 分支		// 更新某个分支的代码
+git branch 				// 查看本地分支
+git branch 分支			// 创建分支
+git checkout 分支			// 切换分支
+git checkout -b 分支		// 创建并切换分支
+git checkout -- file	// 撤销对工作区修改
+git branch -D 分支		// 删除本地分支
+git push origin :分支		// 删除远程仓库分支 
+git branch -l/-r/-a 	// 查看本地分支/查看远程分支/查看所有分支
+git commit -m "注释"		// 提交代码到本地暂存区
+git push origin 分支		// 提交代码到远程仓库 -f 强制提交覆盖 -u 记录git push 默认推送origin master
+git config -l 			// 查看git配置信息
+git remote show origin			// 查看某个远程仓库的详细信息
+git status				// 查看状态
+git log					// 查看提交历史信息
+git reset --hard 版本号	// 没必要写完整，前几位就行(六七位),回退版本
+git reset HEAD -- file	// 清空add命令向暂存区提交的关于file文件的修改
+git reset HEAD^			// 已经提交了不合适的修改到版本库时，想要撤销本次提交
+git reflog 				// 查看操作的git记录
+git show 版本号			// 查看提交的内容
+git diff 				// 不加参数即默认比较工作区与暂存区
 
 用 git rm 来删除文件，同时还会将这个删除操作记录下来；
 用 rm 来删除文件，仅仅是删除了物理文件，没有将其从 git 的记录中剔除。
@@ -45,11 +54,37 @@ git diff 				不加参数即默认比较工作区与暂存区
 
 git把本地和线上回退到某个历史版本，然后再做提交到线上
 git reset --hard 版本号
-git push -f -u origin 分支	强行提交覆盖
+git push -f -u origin 分支	// 强行提交覆盖
 
 设置Git的user name和email：
 $ git config --global user.name "xxx"
 $ git config --global user.email "xxx@xxx.com"
+```
+
+## git rebase 合并多次提交为一次
+
+```js
+git log // 查看本地日志记录
+git rebase -i HEAD~2 | git rebase -i 10b73908 
+// HEAD为最新的一次commit记录,~2则是向下多少个commit记录 
+// 直接填写commit id 则是从HEAD开始，到commit id中间的提交(不包含该commit id)
+// 进入vi编辑模式后，p 则是采用本次commit记录，s是使用提交但不使用commit记录
+git rebase --continue // 继续进行git rebase，会进行vi编辑模式，课进行修改
+git rebase --abort // 放弃退出git rebase
+```
+
+## git stash 暂时保存本地工作进度
+
+```js
+git stash save "" // 将本地工作进度进行保存并注释
+git stash list // 将所有保存的工作进度进行展示
+git stash pop // 恢复最新的进度到工作区
+git stash pop [index] // 恢复list中的索引到工作区，同时并删除保存的历史
+git stash pop stash@{[index]} // 恢复list中某条id到工作区，同时并删除保存的历史
+git stash clear // 删除所有存储的进度
+// 不常用
+git stash apply [–index]｜[stash_id] // 除了不删除保存的历史，其余和pop一样
+git stash drop [stash_id] // 删除一个存储的进度。如果不指定stash_id，则默认删除最新的存储进度
 ```
 
 ## git 打tag操作
@@ -68,6 +103,17 @@ git push origin --tags // 推送所有tag
 git pull origin --tags //拉去远程所有tag 
 ```
 
+## git config 修改
+
+```js
+git config --list // 查看config配置项
+git config --global --edit // 修改config配置项
+git config --global --add user.name xxx // 全局增加某项配置
+git config --global --unset user.name // 全局删除某项配置
+git config --global user.name xxx // 全局修改名称
+git config --global user.name // 全局查看某项配置项
+```
+
 
 
 ## git 放弃本地修改，拉取远程仓库代码强制覆盖
@@ -83,9 +129,9 @@ git reset --hard origin/master // 把HEAD指向最新下载的版本
 
 ```js
 git remote add origin 远程仓库地址
-git add . 添加本地暂存
-git commit -m "" 添加本地仓库，并描述
-git push origin master 推送到远程仓库
+git add . // 添加本地暂存
+git commit -m "" // 添加本地仓库，并描述
+git push origin master // 推送到远程仓库
 ```
 
 
@@ -99,6 +145,17 @@ git remote set-url origin 远程地址 // 修改远程仓库地址
 
 
 
+## git ignore 忽略不生效
+
+原因是因为在Studio的git忽略目录中，新建的文件在git中会有缓存，如果某些文件已经被纳入了版本管理中，就算是在.gitignore中已经声明了忽略路径也是不起作用的，这时候我们就应该先把本地缓存删除，然后再进行git的push，这样就不会出现忽略的文件了
+
+```js
+git rm -r --cached .
+git add .
+git commit -m 'update .gitignore'
+git push
+```
+
 
 
 # 生成SSH密钥过程：
@@ -110,4 +167,3 @@ git remote set-url origin 远程地址 // 修改远程仓库地址
 # 遇到程序卡死
 
 :wq					解决冲突
-

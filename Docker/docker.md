@@ -32,7 +32,7 @@ ADD . /app/
 EXPOSE 3000
 WORKDIR /app
 RUN npm install
-CMD ['node', './index.js']
+CMD (["node", "./index.js"]) || (node ./index.js)
 ```
 
 + `FROM` 设置基础镜像，这里使用node
@@ -86,6 +86,7 @@ CMD ['node', './index.js']
 - `docker build -t vuenginxcontainer .`  
   - `-t` 是给镜像命名
   -  `.` 是基于当前目录的Dockerfile来构建镜像
+- `docker save -o imagesName.tar image1 images2`  镜像打包，将镜像输出为tar包
 - [docker create](https://docs.docker.com/engine/reference/commandline/create/#options) 命令通过镜像去创建一个容器，同时吐出容器 id。
 
   - `docker create --name ubuntuContainer ubuntu:18.04`
