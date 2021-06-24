@@ -1,4 +1,6 @@
-## js的运行角色
+[toc]
+
+# js的运行角色
 
 + js引擎
 
@@ -16,15 +18,43 @@
 
 负责收集并维护由所有声明的标识符(变量)组成的一系列查询，并实施一套非常严格的规则，确定当前执行的代码对这些标识符(变量)的访问权限
 
-## js的运行环境
+# js的运行环境
 
 - 全局环境（JS代码加载完毕后，进入代码预编译即进入全局环境）
 - 函数环境（函数调用执行时，进入该函数环境，不同的函数则函数环境不同）
 - eval（不建议使用，会有安全，性能等问题）
 
-js不像其它语言一样需要编译后运行，而作为一门解释性语言，js是边编译边执行，借助`JIT(Just-In-Time，中文名叫即时编译器)`进行优化。通常我们叫js的编译叫做预编译，发生在执行代码的前几微秒到十几微妙之间。
+# js执行上下文生命周期
 
-js代码的执行过程分为两个阶段，一个是编译阶段，一个是执行阶段。编译阶段由编译器完成，将代码翻译成可执行代码，这个阶段作用域规则会确定。执行阶段由引擎完成，主要任务是执行可执行代码，执行上下文在这个阶段创建。
+js执行上下文分为三个阶段
+
+创建阶段 ——> 执行阶段 ——> 回收阶段
+
+<hr style="background-color: red" />
+
+# ES3 js执行流程概览
+
+js不像其它语言一样需要编译后运行，而作为一门解释性语言，js是边编译边执行，借助`JIT`等各种方式进行优化。
+
+js代码的执行过程分为三个阶段，
+
+1. 语法分析阶段
+
+   词法分析之后会进行语法分析将词法单元流形成ast语法树，并生成词法作用域也就是静态作用域，然后进行代码生成，这个时候会对变量分配存储空间，以及形成全局执行上下文。同时会对代码进行语法检查，如果不正确则会向外抛出异常，如果正确则会进入下一个阶段，预编译阶段
+
+2. 预编译阶段
+
+   预编译阶段会创建执行上下文也就是当前执行环境，js在遇到新的运行环境时便会创建新的执行上下文，主要是
+
+   + 创建变量对象VO(Variable Object)
+   + 建立作用域链(Scope Chain)
+   + 确定this指向
+
+3. 执行阶段。
+
+   将编译阶段创建的执行上下文压入调用栈，并成为正在运行的执行上下文，当前执行上下文执行结束后，弹出调用栈
+
+当读取到新的代码块时语法分析完成全局执行上下文也就创建完毕
 
 js的整体代码作为一个全局执行上下文，我们用 globalContext 表示它，遇到函数调用时，就会新创建新的执行上下文，而对于一段程序来说，为了维护那么多执行上下文，js引擎便创建了执行上下文栈来管理执行上下文。函数调用便创建新的执行上下文并压入栈，函数调用完成，进行出栈操作。
 
@@ -160,6 +190,176 @@ innerTestEC = {
     this: window
 }
 ```
+
+
+
+# ES5 js执行流程概览
+
+## 针对es3修改
+
+es5版本对es3版本进行了修改调整，删除了变量对象、活动对象、作用域链，将this指向修改成this绑定
+
+## es5的执行上下文
+
+```js
+let a = 20;
+const b = 30;
+var c;
+
+function multiply(e, f){
+    var g = 20;
+    return e*f*g;
+}
+
+c = multiply(20, 30);
+
+```
+
+以上面的例子为举例
+
+1. 创建阶段。
+
+   + 全局执行环境
+
+     globalContext{
+
+     ​	this绑定 // this指向的是`window`对象
+
+     ​	词法环境{ // 用来存储诸如`let`、`const`、`class`、`function`变量
+
+     ​		对象环境记录器{
+
+     ​			// 标识符绑定，let、const、函数声明     		
+
+     ​			a: <uninitialized>,    		
+
+     ​			b: <uninitialized>,    		
+
+     ​			multiply:< func >
+
+     ​		}
+
+     ​		外部环境引用 // 类似es3版本的作用域链，全局外部环境引用为null
+
+     ​	}
+
+     ​	变量环境{ // 用来存储`var`变量
+
+     ​		对象环境记录器{
+
+     ​			// 标识符绑定，var 声明            
+
+     ​			c: undefined,
+
+     ​		}
+
+     ​		外部环境引用 // 类似es3版本的作用域链，全局外部环境引用为null
+
+     ​	}
+
+     }
+
+   + 函数执行环境
+
+     functionContext{
+
+     ​	this绑定 // this指向最后调用函数的对象，箭头函数则指向当前执行上下文this
+
+     ​	词法环境{
+
+     ​		声明环境记录器{
+
+     ​			// 标识符绑定    		
+
+     ​			Arguments: { 
+
+     ​				0:20, 
+
+     ​				1:30, 
+
+     ​				length: 2
+
+     ​			}
+
+     ​		}
+
+     ​		外部环境引用 // 类似es3版本的作用域链，父级可能为window对象或者其它函数的词法环境
+
+     ​	}
+
+     ​	变量环境{
+
+     ​		声明环境记录器{		
+
+     ​			// 在这里绑定标识符         
+
+     ​			g: undefined
+
+     ​		}
+
+     ​		外部环境引用 // 类似es3版本的作用域链，父级可能为window对象或者其它函数的词法环境
+
+     ​	}
+
+     }
+
+   ```js
+   // 全局执行上下文
+   GlobalExectionContext = {
+       
+       ThisBinding: <Global Object>,
+       // 词法环境
+       LexicalEnvironment: {
+       	EnvironmentRecord: {
+       		Type: "Object",
+       		// 标识符绑定，let、const、函数声明 
+       		a: <uninitialized>,
+       		b: <uninitialized>,
+       		multiply:< func >
+   		}
+   		outer: <null>
+   	},
+       // 变量环境
+       VariableEnvironment: {
+           EnvironmentRecord: {
+               Type: "Object",
+               // 标识符绑定，var 声明
+               c: undefined,
+           }
+           outer: <null>
+       }
+   }
+   
+   // 函数执行上下文
+   FunctionExectionContext = {
+       ThisBinding: <Global Object>,
+       
+       LexicalEnvironment: {
+       	EnvironmentRecord: {
+       		Type: "Declarative",
+       		// 标识符绑定
+       		Arguments: { 0:20, 1:30, length: 2},
+   		},
+           outer: <GlobalLexicalEnvironment>
+   	},
+           
+       VariableEnvironment: {
+           EnvironmentRecord: {
+             Type: "Declarative",
+             // 在这里绑定标识符
+             g: undefined
+           },
+           outer: <GlobalLexicalEnvironment>
+     	}
+   }
+   
+   ```
+
+   
+
+2. 执行阶段
+
+3. 回收阶段
 
 
 

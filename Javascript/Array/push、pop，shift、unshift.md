@@ -1,4 +1,4 @@
-
+![](https://user-gold-cdn.xitu.io/2016/11/29/434fa0fe7e51a69c7953f456d7290649?imageView2/0/w/1280/h/960/format/webp/ignore-error/1)
 
 > 数组方法伪代码展示
 

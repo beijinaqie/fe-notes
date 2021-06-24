@@ -26,6 +26,10 @@
 
 <img src="/Users/beijinaqie/笔记/fe-notes/images/iShot2020-11-17 10.40.33.png" style="zoom:50%;" />
 
+新对象.\__proto__ = {}
+
+{}.\__proto__ = Object.prototype
+
 以Object.prototype来创建对象，其表现形式和对象字面量保持一致
 
 <img src="/Users/beijinaqie/笔记/fe-notes/images/iShot2020-11-17 10.41.09.png" style="zoom:50%;" />
