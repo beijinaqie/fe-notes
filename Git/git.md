@@ -61,6 +61,29 @@ $ git config --global user.name "xxx"
 $ git config --global user.email "xxx@xxx.com"
 ```
 
+## git代理，解决github的 pull，push慢的问题
+
+```js
+# 代理
+git config --global http.proxy http://127.0.0.1:1080
+git config --global https.proxy https://127.0.0.1:1080
+# 上面不生效用
+git config --global http.proxy 'socks5://127.0.0.1:1080' 
+git config --global https.proxy 'socks5://127.0.0.1:1080'
+
+# 只对 github 进行代理，对国内的仓库不影响，可以这样设置，不熟悉配置文件不建议使用
+git config --global http.https://github.com.proxy https://127.0.0.1:1080
+git config --global https.https://github.com.proxy https://127.0.0.1:1080
+# 只对 gitlab 进行代理，对国内的仓库不影响，可以这样设置，不熟悉配置文件不建议使用
+git config --global https.https://https://gitlab.com.proxy https://127.0.0.1:1080
+
+# 恢复
+git config --global --unset http.proxy
+git config --global --unset https.proxy
+```
+
+
+
 ## git rebase 合并多次提交为一次
 
 ```js

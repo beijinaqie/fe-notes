@@ -1,0 +1,3 @@
+[submodule "modules/web-base"]
+	path = modules/web-base
+	url = https://github.com/beijinaqie/web-base.git
