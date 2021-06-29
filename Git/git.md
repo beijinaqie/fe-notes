@@ -33,7 +33,7 @@ git checkout -- file	// 撤销对工作区修改
 git branch -D 分支		// 删除本地分支
 git push origin :分支		// 删除远程仓库分支 
 git branch -l/-r/-a 	// 查看本地分支/查看远程分支/查看所有分支
-git commit -m "注释"		// 提交代码到本地暂存区
+git commit -m "注释"		// 提交代码到本地暂存区 -a 命令则不需要git add 
 git push origin 分支		// 提交代码到远程仓库 -f 强制提交覆盖 -u 记录git push 默认推送origin master
 git config -l 			// 查看git配置信息
 git remote show origin			// 查看某个远程仓库的详细信息
