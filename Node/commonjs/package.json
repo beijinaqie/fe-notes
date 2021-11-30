@@ -1,0 +1,19 @@
+{
+  "name": "my-commonjs",
+  "version": "1.0.0",
+  "description": "模拟实现commonjs",
+  "main": "index.js",
+  "license": "MIT",
+  "dependencies": {
+    "chalk": "^4",
+    "commander": "^8.3.0",
+    "ejs": "^3.1.6",
+    "figlet": "^1.5.2",
+    "ip": "^1.1.5",
+    "mime": "^3.0.0",
+    "ora": "^6.0.1"
+  },
+  "devDependencies": {
+    "eslint": "^7.10.0"
+  }
+}
