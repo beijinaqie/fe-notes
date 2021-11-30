@@ -1,6 +1,9 @@
 // 模拟实现ejs
 const path = require('path')
 const fs = require('fs')
+const http = require('http')
+const crypto = require('crypto')
+const child_process = require('child_process')
 
 let data = {
   list: [1, 2, 3],
@@ -25,4 +28,34 @@ let ejs = {
 
 let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8')
 let r = ejs.render(html, data)
-console.log(r);
+// console.log(r);
+
+http.createServer((req, res) => {
+  
+  let statObj = fs.statSync(path.join(__dirname, 'index.html'))
+  let lastModified = statObj.ctime.toGMTString()
+  let etag = crypto.createHash('md5').update(lastModified + statObj.size).digest('base64')
+  res.setHeader('Etag', etag)
+  res.setHeader('Content-Type', 'text/html;charset=utf-8');
+  if (etag === req.headers['if-none-match']) {
+    res.statusCode = 304;
+    return res.end();
+  }
+  console.log(req.url);
+  res.end(r)
+}).listen(3000, () => {
+  let url = 'http://127.0.0.1:3000';
+  let map = {
+    'win32': () => {
+      child_process.exec(`start ${ url }`)
+    },
+    'darwin': () => {
+      child_process.exec(`open ${ url}`)
+    },
+    'linux': () => {
+      child_process.exec(`xdg-open ${ url }`)
+    }
+  }
+  map[process.platform]()
+  console.log('your server is running at http://127.0.0.1:3000');
+})
