@@ -28,23 +28,30 @@ class Module {
 
   static extensions = {
     '.js'(module) {
+      let dirname = module.id.split('/').slice(0, -1).join('/')
+      let script = fs.readFileSync(module.id, 'utf-8')
+      let fn = new Function('exports', 'require', 'module', '__dirname', '__filename', script)
 
+      fn.call(module.exports, module.exports, myRequire, module, dirname, module.id)
     },
     '.json'(module) {
-
+      let json = JSON.parse(fs.readFileSync(module.id))
+      module.exports = json
     }
   }
 
   static resolvePatnName(id) {
     if (!this.validatePath(id)) return
+    let curFilePath = process.argv.slice(1, 2)[0];
+    let curDirPath = curFilePath.split('/').slice(0, -1).join('/')
 
-    let pathName = path.join(__dirname, id)
+    let pathName = path.join(curDirPath, id)
     let extname = path.extname(pathName)
     
     if (!extname) {
       let extension = Object.keys(this.extensions).find(item => fs.existsSync(pathName + item));
       if (extension) {
-        return this.resolvePatnName(pathName + extension)
+        return pathName + extension
       }
       throw new Error('文件不存在')
     } else if (!fs.existsSync(pathName)) {
@@ -54,7 +61,8 @@ class Module {
   }
 
   load() {
-    console.log();
+    let extname = path.extname(this.id);
+    Module.extensions[extname](this)
   }
 }
 
