@@ -16,6 +16,7 @@ class Module {
     const externalModule = [...Object.keys(packageJson.dependencies), ...Object.keys(packageJson.devDependencies)]
     
     if (id.startsWith('./') || id.startsWith('../')) {
+      // 自定义模块
       return true
     } else if (internalModule.includes(id)) {
       console.log('node内置模块');
@@ -70,7 +71,7 @@ function myRequire(id) {
   if (id === '') throw new Error('路径不能为空a')
 
   let filePath = Module.resolveFileName(id);
-  
+
   if (Module.cache[filePath]) {
     return Module.cache[filePath].exports
   }
