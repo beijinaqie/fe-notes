@@ -40,6 +40,8 @@ class Module {
     }
   }
 
+  static cache = {}
+
   static resolvePatnName(id) {
     if (!this.validatePath(id)) return
     let curFilePath = process.argv.slice(1, 2)[0];
@@ -72,14 +74,18 @@ function myRequire(id) {
   if (id === '') throw new Error('路径不能为空a')
 
   let pathName = Module.resolvePatnName(id);
-  
+  if (Module.cache[pathName]) {
+    return Module.cache[pathName].exports
+  }
   let module = new Module(pathName);
+
+  Module.cache[pathName] = module
 
   module.load()
 
   return module.exports
 }
 
-const add = myRequire('./add')
+let add = myRequire('./add')
 
 console.log(add);
