@@ -42,24 +42,20 @@ class Module {
 
   static cache = {}
 
-  static resolvePatnName(id) {
+  static resolveFileName(id) {
     if (!this.validatePath(id)) return
     let curFilePath = process.argv.slice(1, 2)[0];
     let curDirPath = curFilePath.split('/').slice(0, -1).join('/')
 
-    let pathName = path.join(curDirPath, id)
-    let extname = path.extname(pathName)
-    
-    if (!extname) {
-      let extension = Object.keys(this.extensions).find(item => fs.existsSync(pathName + item));
-      if (extension) {
-        return pathName + extension
-      }
-      throw new Error('文件不存在')
-    } else if (!fs.existsSync(pathName)) {
-      throw new Error('文件不存在')
+    let filePath = path.join(curDirPath, id)
+
+    if (fs.existsSync(filePath)) return filePath
+
+    for (let ext of Object.keys(this.extensions)) {
+      if (fs.existsSync(filePath + ext)) return filePath + ext
     }
-    return pathName
+
+    throw new Error('文件不存在')
   }
 
   load() {
@@ -73,13 +69,14 @@ function myRequire(id) {
 
   if (id === '') throw new Error('路径不能为空a')
 
-  let pathName = Module.resolvePatnName(id);
-  if (Module.cache[pathName]) {
-    return Module.cache[pathName].exports
+  let filePath = Module.resolveFileName(id);
+  
+  if (Module.cache[filePath]) {
+    return Module.cache[filePath].exports
   }
-  let module = new Module(pathName);
+  let module = new Module(filePath);
 
-  Module.cache[pathName] = module
+  Module.cache[filePath] = module
 
   module.load()
 
