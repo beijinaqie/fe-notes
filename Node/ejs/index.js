@@ -30,6 +30,7 @@ let html = fs.readFileSync(path.join(__dirname, 'index.html'), 'utf8')
 let r = ejs.render(html, data)
 // console.log(r);
 
+let port = 3000
 http.createServer((req, res) => {
   
   let statObj = fs.statSync(path.join(__dirname, 'index.html'))
@@ -43,17 +44,17 @@ http.createServer((req, res) => {
   }
   console.log(req.url);
   res.end(r)
-}).listen(3000, () => {
-  let url = 'http://127.0.0.1:3000';
+}).listen(port, () => {
   let map = {
-    'win32': () => {
-      child_process.exec(`start ${ url }`)
+    url: `http://127.0.0.1:${port}`,
+    'win32'(){
+      child_process.exec(`start ${ this.url }`)
     },
-    'darwin': () => {
-      child_process.exec(`open ${ url}`)
+    'darwin'(){
+      child_process.exec(`open ${ this.url}`)
     },
-    'linux': () => {
-      child_process.exec(`xdg-open ${ url }`)
+    'linux'(){
+      child_process.exec(`xdg-open ${ this.url }`)
     }
   }
   map[process.platform]()
