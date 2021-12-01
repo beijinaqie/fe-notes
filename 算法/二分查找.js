@@ -1,3 +1,5 @@
+const assert = require('assert');
+
 let arr = [3, 5, 19, 22, 25, 33, 45, 47, 57, 66, 71, 78, 81]
 
 function binarySearch(arr, target) {
@@ -9,7 +11,7 @@ function binarySearch(arr, target) {
   let g = ~~(r / 2)
 
   function recursive() {
-    console.log(l, r, g, arr[g]);
+    // console.log(l, r, g, arr[g]);
     if (l > r || r < l) return -1
     if (arr[g] === target) return g;
 
@@ -25,5 +27,10 @@ function binarySearch(arr, target) {
   return recursive();
 }
 
-let ele = binarySearch(arr, 88)
-console.log(ele);
+
+// 断言测试
+assert.strictEqual(binarySearch(arr, 1), -1)
+assert.strictEqual(binarySearch(arr, 19), 2)
+assert.strictEqual(binarySearch(arr, 66), 9)
+assert.strictEqual(binarySearch(arr, 3), 0)
+assert.strictEqual(binarySearch(arr, 81), 12)
