@@ -1,17 +1,35 @@
-// let arr = [2, 4, 7, 9, 13]
-let arr1 = [5, 2, 4, 6, 1, 3]
+const assert = require('assert');
 
-function insert(arr, target) {
-  let idx = arr.findIndex(item => item > target);
-  arr.splice(idx >= 0 ? idx : arr.length, 0, target);
+let arr = [2, 4, 7, 9, 13]
+let arr1 = [2, 4, 7, 9, 13]
+let arr2 = [2, 4, 7, 9, 13]
+
+function insert(arr, len, target) {
+  let i = len - 1;
+
+  while (i >= 0 && arr[i] > target) {
+    arr[i + 1] = arr[i]
+    i--;
+  }
+  arr[i + 1] = target
 }
-// insert(arr, 1)
-// console.log(arr);
+
+insert(arr, arr.length, 1)
+assert.deepEqual(arr, [1, 2, 4, 7, 9, 13])
+insert(arr1, arr1.length, 8)
+assert.deepEqual(arr1, [2, 4, 7, 8, 9, 13])
+insert(arr2, arr2.length, 15)
+assert.deepEqual(arr2, [2, 4, 7, 9, 13, 15])
+console.log('断言通过');
+
 
 function insert_sort(arr) {
-  insert(arr, arr[1]);
+  for (let i = 1; i < arr.length; i++) {
+    insert(arr, i, arr[i])
+  }
 }
 
-insert_sort(arr1)
-
-console.log(arr1);
+let arr3 = [5, 8, 1, 3, 2, 4, 9]
+insert_sort(arr3)
+assert.deepEqual(arr3, [1, 2, 3, 4, 5, 8, 9])
+console.log('断言通过');
