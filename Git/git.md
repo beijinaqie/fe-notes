@@ -65,6 +65,9 @@ $ git config --global user.email "xxx@xxx.com"
 ## git commit 之后想回退
 
 ```js
+git reset . // 如果是撤销所有的已经add的文件
+git reset HEAD  -filename // 如果是撤销某个文件或文件夹：
+git reset HEAD .  // 如果是撤销所有的已经add的文件:
 git reset --soft HEAD~1  // 不删除工作空间改动代码，撤销commit，不撤销git add . 
 git reset --mixed HEAD~1 // 不删除工作空间改动代码，撤销commit，并且撤销git add . 操作
 这个为默认参数,git reset --mixed HEAD^ 和 git reset HEAD^ 效果是一样的

@@ -477,3 +477,19 @@ export function versionCompare(v1, v2, options) {
   }
 ```
 
+### 函数柯里化
+
+```js
+function curry(func) {
+  return function curried(...args) {
+    if (args.length >= func.length) {
+      return func.apply(this, args);
+    } else {
+      return function(...args2) {
+        return curried.apply(this, [...args, ...args2]);
+      }
+    }
+  };
+}
+```
+

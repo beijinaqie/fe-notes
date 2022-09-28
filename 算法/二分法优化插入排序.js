@@ -24,7 +24,6 @@ function insert_sort(arr) {
         l = m + 1
       }
     }
-    console.log(m, arr[m], target, l);
     // console.log(p, target)
     // 将待排序项最数组末端以此往后移1位
     for (let j = p; j >= m; j--) {
@@ -41,7 +40,40 @@ function insert_sort(arr) {
   }
 }
 
-insert_sort(arr);
+// insert_sort(arr);
+// console.log(arr);
+
+
+
+// 先实现有序数组内插入 [5, 8, 1, 3, 2, 4, 9, 8]
+function insert(arr, len, target) {
+  let l = 0;
+  let r = len - 1;
+  let g;
+  
+  while(l <= r) {
+    g = ~~((l + r) / 2);
+    if (arr[g] > target) {
+      r = g - 1;
+    } else {
+      l = g + 1;
+    }
+  }
+  
+  while(len > l) {
+    arr[len] = arr[len - 1];
+    len--;
+  }
+  arr[l] = target;
+}
+
+// 在将数组循环进行逐个排序
+function insertSort(arr) {
+  for (let i = 1;i < arr.length;i++) {
+    insert(arr, i, arr[i])
+  }
+}
+
+
+insertSort(arr)
 console.log(arr);
-
-
