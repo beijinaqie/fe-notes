@@ -493,3 +493,33 @@ function curry(func) {
 }
 ```
 
+### 测量文本宽度
+```js
+function getTextWidth(text, options = {}) {
+  const { font = 14, family = 'Microsoft YaHei' } = options;
+  const convas = document.createElement("canvas");
+  const ctx = convas.getContext("2d");
+  ctx.font = `${font}px ${family}`;
+  const text = ctx.measureText(text);
+  convas.remove();
+
+  return text.width;
+}
+```
+
+### base64转blob
+```js
+function base64Toblob(code: string) {
+	let parts = code.split(";base64,");
+	let contentType = parts[0].split(":")[1];
+	let raw = window.atob(parts[1]);
+	let rawLength = raw.length;
+	let uInt8Array = new Uint8Array(rawLength);
+	for (let i = 0; i < rawLength; ++i) {
+		uInt8Array[i] = raw.charCodeAt(i);
+	}
+	return new Blob([uInt8Array], {
+		type: contentType,
+	});
+}
+```

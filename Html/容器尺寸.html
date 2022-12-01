@@ -1,0 +1,41 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+    }
+    #canvas {
+      border: 1px solid red;
+    }
+  </style>
+</head>
+<body>
+  <video controls width="250">
+
+    <source src="blob:http://127.0.0.1:3000/8c3dc15c-3bb1-468a-a919-0ef176a579d7">
+
+    Download the
+    <a href="/media/cc0-videos/flower.webm">WEBM</a>
+    or
+    <a href="/media/cc0-videos/flower.mp4">MP4</a>
+    video.
+</video>
+  <span id="text">这是什么</span>
+  <canvas id="canvas" width="500px" height="500px"></canvas>
+  <script>
+    let text = document.querySelector("#text");
+    console.log(getComputedStyle(text).font);
+    
+    /** @type {HTMLCanvasElement} */
+    let canvas = document.querySelector('#canvas');
+    let ctx = canvas.getContext('2d');
+    ctx.arc(100, 100, 50, "30deg","50deg");
+    ctx.stroke();
+  </script>
+</body>
+</html>

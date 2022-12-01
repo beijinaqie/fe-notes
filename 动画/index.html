@@ -1,0 +1,50 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <script>
+    function copyImage(url){
+      const image = new Image()
+      // 执行跨域请求获取图片
+      image.setAttribute('crossOrigin', 'anonymous')
+      image.onload = function () {
+        const canvas = document.createElement('canvas')
+        canvas.width = image.width
+        canvas.height = image.height
+        const context = canvas.getContext('2d')
+        context.drawImage(image, 0, 0, image.width, image.height)
+        // 使用canvas 将图片转换成为image/png的blob数据
+        canvas.toBlob(function (data) {
+          // clipboard.write 仅支持image/png的blob数据
+          navigator.clipboard.write([
+            new window.ClipboardItem({
+              [data.type]: data,
+            }),
+          ])
+        }, 'image/png')
+      }
+      image.src = url
+    }
+    function getClipboardContent(){
+      const reader = new FileReader()
+      navigator.clipboard.read().then(res => {
+        res[0].getType('image/png').then(data => {
+          console.log(data)
+          reader.readAsDataURL(data)
+          reader.onload = function (e) {
+            console.log(e.target.result)
+          }
+        })
+      })
+    }
+    copyImage('./icon.svg');
+    // copyImage('https://sponsors.vuejs.org/images/xitujuejinjishushequ.png')
+    // getClipboardContent();
+  </script>
+</head>
+<body>
+  <input />
+</body>
+</html>

@@ -1,0 +1,1495 @@
+
+<!DOCTYPE HTML>
+<html>
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0">
+<link rel="shortcut icon" type="image/png" href="icon.png">
+
+<title>Recorder代码运行和静态分发工具</title>
+
+<script src="https://xiangyuecn.gitee.io/recorder/src/recorder-core.js"></script>
+<script src="https://xiangyuecn.gitee.io/recorder/src/extensions/waveview.js"></script>
+<script src="https://xiangyuecn.gitee.io/recorder/src/extensions/wavesurfer.view.js"></script>
+<script src="https://xiangyuecn.gitee.io/recorder/src/extensions/lib.fft.js"></script>
+<script src="https://xiangyuecn.gitee.io/recorder/src/extensions/frequency.histogram.view.js"></script>
+
+<script src="https://xiangyuecn.gitee.io/recorder/assets/ztest-jquery.min-1.9.1.js"></script>
+<script src="https://xiangyuecn.gitee.io/recorder/assets/ztest-codemirror.min.5.48.4.js"></script>
+<script src="https://xiangyuecn.gitee.io/recorder/assets/ztest-rsa.js"></script>
+<script>
+//受信任的Root公钥列表，最大程度确保自动运行本工具时执行的任意代码的作者身份未被篡改
+//添加root公钥需要额外验证签名SelfSign=SignSHA1(ID)，用于确保自身的手写正确性
+var TrustRSARoots=[
+	{Name:"官方G01签发的作者身份验证",ID:"G01" ,Public:"AQAB",Modulus:"2v+8JirVYBFVqh7AzeaPs5I84JrstgVMwv1qAoX7nZTfiiTS7M9jFgIOxtugveJQkuZsjNxzQ+p/iIfCEqtOwkhsx+DLhwJY5R60NXQwivU7u6ENhZgNrBoIxs35UyLsyTROd4i4cGRq49sETfwK1nBNMH87OWtwVmquQmWs8zk=",SelfSign:"D6onRGidDe668nWFs6N1qAFxDDO0ug0AwrezNHu9VguyLjhhF/Pkd0o6X7VajDvUo4RXxooRuDF0WvVk103I3xjbCz7pAlyKGcqVGdqRiIkXr6RsgxzbdQ9bGOFt3k6hioFPpJX4OBukPaIjCUVzohq/axKhXxgNk81oDTgUawE="}
+];
+//吊销列表 emmm...记录已签发公钥的hash即可完成吊销，用不到就不写了
+</script>
+
+<style>
+body{
+	word-wrap: break-word;
+	background:#f5f5f5 center top no-repeat;
+    background-size: auto 680px;
+}
+pre{
+	white-space:pre-wrap;
+}
+a{
+	text-decoration: none;
+	color:#06c;
+}
+a:hover{
+	color:#f00;
+}
+
+.main{
+	max-width:700px;
+	margin:0 auto;
+	padding-bottom:80px
+}
+
+.mainBox{
+	margin-top:12px;
+	padding: 12px;
+	border-radius: 6px;
+	background: #fff;
+	--border: 1px solid #f60;
+	box-shadow: 2px 2px 3px #aaa;
+}
+
+
+.mainBtn{
+	display: inline-block;
+	cursor: pointer;
+	border: none;
+	border-radius: 3px;
+	background: #f60;
+	color:#fff;
+	padding: 0 15px;
+	margin:3px 20px 3px 0;
+	line-height: 36px;
+	height: 36px;
+	overflow: hidden;
+	vertical-align: middle;
+}
+.mainBtn:active{
+	background: #f00;
+}
+
+.recwaveChoice{
+	cursor: pointer;
+	display:inline-block;
+	vertical-align: bottom;
+	border-right:1px solid #ccc;
+	background:#ddd;
+	line-height:28px;
+	font-size:12px;
+	color:#666;
+	padding:0 5px;
+}
+.recwaveChoice:first-child{
+	border-radius: 99px 0 0 99px;
+}
+.recwaveChoice:last-child{
+	border-radius: 0 99px 99px 0;
+	border-right:none;
+}
+.recwaveChoice.slc,.recwaveChoice:hover{
+	background:#f60;
+	color:#fff;
+}
+</style>
+</head>
+
+<body>
+
+<div class="main">
+	<div class="mainBox">
+		<span style="font-size:32px;color:#f60;">Recorder代码运行和静态分发工具</span>
+		<a href="https://github.com/xiangyuecn/Recorder" target="_blank">GitHub</a>
+		| <a href="https://gitee.com/xiangyuecn/Recorder" target="_blank">Gitee</a>
+	</div>
+	
+	<div class="mainBox">
+		<div class="mainCodeEdit" style="border:1px solid #ddd">
+			<textarea class="codeEdit" style="width:98%;height:300px"></textarea>
+		</div>
+		
+		<div class="mainCodeBtn" style="padding-top:12px">
+			<button class="mainBtn" onclick="Runtime.CodeRunClick()" style="padding:0 40px">运行</button>
+			<button class="mainBtn" onclick="Runtime.CodePubClick()">分发源码</button>
+		</div>
+	</div>
+	
+	<div class="mainBox mainCtrl" style="display:none">
+		<div style="padding-bottom:12px">
+			<div style="border:1px solid #ccc;display:inline-block;vertical-align:bottom"><div style="height:100px;width:300px;" class="ctrlProcessWave"></div></div>
+			<div style="width:300px;display:inline-block;vertical-align:bottom">
+				<div style="height:40px;width:300px;display:inline-block;background:#999;position:relative;margin-bottom:12px">
+					<div class="ctrlProcessX" style="height:40px;background:#0B1;position:absolute;"></div>
+					<div class="ctrlProcessT" style="padding-left:50px; line-height:40px; position: relative;"></div>
+				</div>
+				
+				<span style="font-size:0">
+					<span class="recwaveChoice" key="WaveView">WaveView</span>
+					<span class="recwaveChoice" key="SurferView">SurferView</span>
+					<span class="recwaveChoice" key="Histogram1">Histogram1</span>
+					<span class="recwaveChoice" key="Histogram2">H...2</span>
+					<span class="recwaveChoice" key="Histogram3">H...3</span>
+				</span>
+			</div>
+		</div>
+		
+		<div class="ctrlBtns"></div>
+	</div>
+	
+	<div class="mainBox mainLogBox">
+		<audio class="LogAudioPlayer" controls style="display:none;width:100%"></audio>
+		<div class="mainLog"></div>
+	</div>
+	
+	<div class="mainBox">
+		<div><span style="font-size:22px; color:#f60">Demo 列表</span> 点击编辑和运行</div>
+		<div class="demoList"></div>
+	</div>
+	
+	<div class="mainBox">
+		<div>
+			如果你有蛮有意思的有价值代码片段，欢迎把代码放到assets/runtime-codes目录内提交PR，我们共同丰富这个Demo列表&#128540;
+		</div>
+		
+		<div style="font-size:12px;color:#999;margin-top:10px">
+			顶上背景图来自 diygod.me
+			<a href="#" class="hideBG"></a>
+		</div>
+	</div>
+</div>
+<script>
+var hideBG=function(hide){
+	localStorage["hideBG"]=hide?"1":"";
+	$("body").css("backgroundImage",hide?"":"url(header-leg__diygod.me.jpg)");
+	$(".hideBG").html(hide?"显示":"不再显示").attr("onclick","hideBG("+(hide?0:1)+")");
+};
+hideBG(localStorage["hideBG"]);
+</script>
+
+
+
+
+
+
+<script>
+(function(){
+var WaveViewBak=Recorder.WaveView;
+var WaveSurferViewBak=Recorder.WaveSurferView;
+var LibFFTBak=Recorder.LibFFT;
+var FrequencyHistogramViewBak=Recorder.FrequencyHistogramView;
+var LogAudios=[0];
+
+window.NOOP=function(){};
+window.RootFolder="https://xiangyuecn.gitee.io/recorder";
+window.Runtime={
+	LogAudios:LogAudios
+	
+	/*注册显示的控制按钮*/
+	,Ctrls:function(ctrls){
+		this._ctrls=ctrls;
+		ctrls.push({name:"清除日志",click:"Runtime.LogClear"});
+		
+		var html=[];
+		for(var i=0;i<ctrls.length;i++){
+			var o=ctrls[i];
+			if(o.html){
+				html.push(o.html);
+			}else if(o.choiceFile){
+				Runtime.ViewChoiceFile(o.choiceFile);
+			}else{
+				html.push('<button class="mainBtn '+o.cls+'" onclick="'+o.click+'()">'+o.name+'</button>');
+			};
+		};
+		$(".ctrlBtns").html(html.join("\n"));
+	}
+	
+	,Import:function(jsList,win){
+		win=win||window;
+		var doc=win.document;
+		var load=function(idx){
+			if(idx>=jsList.length){
+				Runtime.CodeRunClick(1);
+				return;
+			};
+			var itm=jsList[idx];
+			var url=itm.url;
+			if(itm.check()===false){
+				load(idx+1);
+				return;
+			};
+			
+			var elem=doc.createElement("script");
+			elem.setAttribute("type","text/javascript");
+			elem.setAttribute("src",url);
+			elem.onload=function(){
+				load(idx+1);
+			};
+			elem.onerror=function(e){
+				Runtime.Log("请求失败:"+(e.message||"-")+"，"+url,1);
+			};
+			doc.body.appendChild(elem);
+		};
+		setTimeout(function(){
+			load(0);
+		});
+		
+		Runtime.CodeRunImport();
+	}
+	
+	,Process:function(buffers,powerLevel,bufferDuration,bufferSampleRate){
+		Recorder.WaveView=WaveViewBak;
+		Recorder.WaveSurferView=WaveSurferViewBak;
+		Recorder.LibFFT=LibFFTBak;
+		Recorder.FrequencyHistogramView=FrequencyHistogramViewBak;
+		var waveStore=Runtime.WaveStore;
+		if(!waveStore){
+			waveStore=Runtime.WaveStore={};
+			waveStore.WaveView=Recorder.WaveView({elem:".ctrlProcessWave"});
+			waveStore.SurferView=Recorder.WaveSurferView({elem:".ctrlProcessWave"});
+			waveStore.Histogram1=Recorder.FrequencyHistogramView({elem:".ctrlProcessWave"});
+			waveStore.Histogram2=Recorder.FrequencyHistogramView({
+				elem:".ctrlProcessWave"
+				,lineCount:90
+				,position:0
+				,minHeight:1
+				,stripeEnable:false
+			});
+			waveStore.Histogram3=Recorder.FrequencyHistogramView({
+				elem:".ctrlProcessWave"
+				,lineCount:20
+				,position:0
+				,minHeight:1
+				,fallDuration:400
+				,stripeEnable:false
+				,mirrorEnable:true
+				,linear:[0,"#0ac",1,"#0ac"]
+			});
+		};
+		
+		$(".ctrlProcessX").css("width",powerLevel+"%");
+		$(".ctrlProcessT").text(formatMs(bufferDuration,1)+" / "+powerLevel);
+		
+		//可视化图形绘制
+		if(waveStore.choice!=recwaveChoiceKey){
+			waveStore.choice=recwaveChoiceKey;
+			$(".ctrlProcessWave").html("").append(waveStore[recwaveChoiceKey].elem);
+		};
+		waveStore[recwaveChoiceKey].input(buffers[buffers.length-1],powerLevel,bufferSampleRate);
+	}
+	
+	,ReadBlob:function(blob,call){
+		var reader = new FileReader();
+		reader.onloadend = function(e){
+			call(reader.result);
+		};
+		reader.readAsArrayBuffer(blob);
+	}
+	,DecodeAudio:function(fileName,arrayBuffer,True,False){
+		True=True||NOOP;
+		False=False||NOOP;
+		if(!Recorder.Support()){//强制激活Recorder.Ctx 不支持大概率也不支持解码
+			False("浏览器不支持音频解码");
+			return;
+		};
+		var type=(/[^.]+$/.exec(fileName)||[])[0]||"";
+		var srcBlob=new Blob([arrayBuffer],{type:type&&("audio/"+type)||""});
+		
+		var ctx=Recorder.Ctx;
+		ctx.decodeAudioData(arrayBuffer,function(raw){
+			var src=raw.getChannelData(0);
+			var sampleRate=raw.sampleRate;
+			console.log(fileName,raw,srcBlob);
+			
+			var pcm=new Int16Array(src.length);
+			for(var i=0;i<src.length;i++){//floatTo16BitPCM 
+				var s=Math.max(-1,Math.min(1,src[i]));
+				s=s<0?s*0x8000:s*0x7FFF;
+				pcm[i]=s;
+			};
+			
+			True({
+				sampleRate:sampleRate
+				,duration:Math.round(src.length/sampleRate*1000)
+				,srcBlob:srcBlob
+				,type:type
+				,data:pcm
+			});
+		},function(e){
+			console.error("audio解码失败",e);
+			False(fileName+"解码失败:"+(e&&e.message||"-"));
+		});
+	}
+	
+	/*显示日志内容，color:0默认，1红色，2绿色，其他指定颜色*/
+	,Log:function(msg,color){
+		var now=new Date();
+		var t=("0"+now.getHours()).substr(-2)
+			+":"+("0"+now.getMinutes()).substr(-2)
+			+":"+("0"+now.getSeconds()).substr(-2);
+		$(".mainLog").prepend('<div style="color:'+(!color?"":color==1?"red":color==2?"#0b1":color)+'">['+t+']'+msg+'</div>');
+	}
+	,LogAudio:function(blob,duration,rec,msg){
+		var set=rec&&rec.set||{};
+		var id=LogAudios.length;
+		LogAudios.push({blob:blob,set:$.extend({},set),duration:duration});
+		
+		Runtime.Log((msg||"已录制")+":"+(set.bitRate||"-")+"kbps "+(set.sampleRate||"-")+"hz "+blob.size+"b ["+(set.type||"-")+"]"+formatMs(duration||0)+'ms <button onclick="Runtime.LogAudioDown(\''+id+'\')">下载</button> <button onclick="Runtime.LogAudioPlay(\''+id+'\')">播放</button> <span class="p'+id+'"></span> <span class="LogAudio_'+id+'"></span>');
+	}
+	,LogClear:function(){
+		$(".mainLog").html("");
+		LogAudios.length=1;
+	}
+};
+var formatMs=function(ms,all){
+	var f=Math.floor(ms/60000),m=Math.floor(ms/1000)%60;
+	var s=(all||f>0?(f<10?"0":"")+f+":":"")
+		+(all||f>0||m>0?("0"+m).substr(-2)+"″":"")
+		+("00"+ms%1000).substr(-3);
+	return s;
+};
+
+
+var recwaveChoiceKey=localStorage["RecWaveChoiceKey"]||"WaveView";
+$(".recwaveChoice").bind("click",function(e){
+	var elem=$(e.target);
+	$(".recwaveChoice").removeClass("slc");
+	var val=elem.addClass("slc").attr("key");
+	
+	recwaveChoiceKey=val;
+	localStorage["RecWaveChoiceKey"]=recwaveChoiceKey;
+});
+if(!$(".recwaveChoice[key="+recwaveChoiceKey+"]").length){
+	recwaveChoiceKey="WaveView";
+};
+$(".recwaveChoice[key="+recwaveChoiceKey+"]").click();
+
+
+$(window).bind("error",function(e){
+	Runtime.Log('【Error】:<pre>'+(e.error?e.error.stack:event.message)+'</pre>',1);
+});
+})();
+</script>
+
+
+
+
+
+<script>
+(function(){
+var codeRunCtrl;
+Runtime.CodeRunImport=function(){
+	if(codeRunCtrl==1){
+		codeRunCtrl=2;
+		throw new Error("kill");
+	};
+};
+Runtime.CodeRunClick=function(isImport){
+	$(".mainCtrl").show();
+	
+	if(!isImport){
+		codeRunCtrl=1;
+	};
+	if(codeRunCtrl==1){
+		Runtime.Log("代码开始运行，请勿操作...",1);
+	};
+	if(codeRunCtrl==3){
+		return;
+	};
+	if(codeRunCtrl==2){
+		codeRunCtrl=3;
+	};
+	
+	try{
+		var code=$(".codeEdit").val();
+		window.eval(code);
+		Runtime.Log("代码已运行",2);
+	}catch(e){
+		if(e.message.indexOf("kill")+1){
+			return;
+		};
+		Runtime.Log("运行出错:"+e.message+"<pre>"+e.stack+"</pre>",1);
+	};
+};
+
+
+
+Runtime.LogAudioPlay=function(id){
+	var audio=$(".LogAudioPlayer")[0];
+	audio.style.display="inline-block";
+	if(!(audio.ended || audio.paused)){
+		audio.pause();
+	};
+	
+	var o=Runtime.LogAudios[id];
+	if(o){
+		o.play=(o.play||0)+1;
+		var logmsg=function(msg){
+			$(".LogAudio_"+id).html('<span style="color:green">'+o.play+'</span> '+new Date().toLocaleTimeString()+" "+msg);
+		};
+		logmsg("");
+		audio.onerror=function(e){
+			console.log(arguments)
+			logmsg('<span style="color:red">播放失败</span>');
+		};
+		
+		var end=function(blob){
+			audio.src=(window.URL||webkitURL).createObjectURL(blob);
+			audio.play();
+		};
+		var wav=Recorder[o.set.type+"2wav"];
+		if(wav){
+			logmsg("正在转码成wav...");
+			var wavData=o.blob;
+			if(o.set.type=="pcm"){
+				wavData={
+					sampleRate:o.set.sampleRate
+					,bitRate:o.set.bitRate
+					,blob:o.blob
+				};
+			};
+			wav(wavData,function(blob){
+				end(blob);
+				logmsg("已转码成wav播放");
+			},function(msg){
+				logmsg("转码成wav失败："+msg);
+			});
+		}else{
+			end(o.blob);
+		};
+	};
+};
+var Rnd=0;
+Runtime.LogAudioDown=function(id){
+	var o=Runtime.LogAudios[id];
+	if(o){
+		var cls="LogAudioInfo"+(++Rnd);
+		var name="rec-"+o.duration+"ms-"+(o.set.bitRate||"-")+"kbps-"+(o.set.sampleRate||"-")+"hz."+(o.set.type||(/\w+$/.exec(o.blob.type)||[])[0]||"unknown");
+		
+		o.down=(o.down||0)+1;
+		$(".LogAudio_"+id).html('<span style="color:red">'+o.down+'</span> 点击 <span class="'+cls+'"> 下载，或复制文本<button onclick="Runtime.LogAudioDown64(\''+id+'\',\''+cls+'\')">生成Base64文本</button></span>');
+		
+		var downA=document.createElement("A");
+		downA.innerHTML="下载 "+name;
+		downA.href=(window.URL||webkitURL).createObjectURL(o.blob);
+		downA.download=name;
+		$("."+cls).prepend(downA);
+		if(!/mobile/i.test(navigator.userAgent)){
+			downA.click(); //某些软件内会跳转页面到恶心推广页
+		}
+	};
+};
+Runtime.LogAudioDown64=function(key, cls){
+	var o=Runtime.LogAudios[key];
+	
+	var reader = new FileReader();
+	reader.onloadend = function() {
+		var id="LogAudioInfoB64"+(++Rnd);
+		$("."+cls).append('<textarea class="'+id+'"></textarea>');
+		$("."+id).val(reader.result);
+	};
+	reader.readAsDataURL(o.blob);
+};
+
+
+
+Runtime.ViewChoiceFile=function(set){
+	set=$.extend({
+		multiple:true
+		,name:"音乐"
+		,title:"转换"
+		,mime:"audio/*"
+		,process:NOOP //fn(fileName,arrayBuffer,filesCount,fileIdx,endCall)
+	},set);
+	
+	$(".RuntimeChoiceFileBox").remove();
+	Runtime.Log('\
+<div class="RuntimeChoiceFileBox">\
+	<div class="RuntimeChoiceDropFile" onclick="$(\'.RuntimeChoiceFile\').click()" style="border: 3px dashed #a2a1a1;background:#eee; padding:30px 0; text-align:center;cursor: pointer;">\
+	拖拽'+(set.multiple?"多":"一")+'个'+set.name+'文件到这里 / 点此选择，并'+set.title+'\
+	</div>\
+	<input type="file" class="RuntimeChoiceFile" style="display:none" accept="'+set.mime+'" '+(set.multiple?'multiple="multiple"':'')+'>\
+</div>');
+	$(".RuntimeChoiceDropFile").bind("dragover",function(e){
+		e.preventDefault();
+	}).bind("drop",function(e){
+		e.preventDefault();
+		
+		readChoiceFile(e.originalEvent.dataTransfer.files);
+	});
+	$(".RuntimeChoiceFile").bind("change",function(e){
+		readChoiceFile(e.target.files);
+	});
+	function readChoiceFile(files){
+		if(!files.length){
+			return;
+		};
+		
+		Runtime.Log("发现"+files.length+"个文件，开始"+set.title+"...");
+		
+		var idx=-1;
+		var run=function(){
+			idx++;
+			if(idx>=files.length){
+				return;
+			};
+			
+			var file = files[idx];
+			var reader = new FileReader();
+			reader.onload = function(e){
+				set.process(file.name,e.target.result,files.length,idx,run);
+			}
+			reader.readAsArrayBuffer(file);
+		};
+		run();
+	};
+};
+
+
+})();
+</script>
+
+
+
+
+
+
+
+
+
+
+
+
+
+<script>
+$(function(){
+	var elem=$(".codeEdit");
+	var w=elem.width();
+	var edit=CodeMirror.fromTextArea(elem[0],{
+			mode:"javascript"
+			,lineNumbers:true
+			,lineWrapping:true
+		});
+		console.log(edit);
+	Runtime.CodeEdit=edit;
+	edit.setSize(w+"px","auto");
+	edit.on("change",function(a){
+		clearTrustBGInt();
+		
+		var val=a.getValue();
+		if(/^https:\/\/xiangyuecn/.test(val)){
+			setVal("");
+			Runtime.Log("检测到输入了URL，正在解析此URL...");
+			setTimeout(function(){
+				viewUrlCode(val);
+			});
+			return;
+		};
+		elem.val(val);
+	});
+
+	var setVal=function(val){
+		edit.setValue(val);
+		
+		edit.refresh();
+	};
+	var loadDemoCode=function(key,name,end){
+		const codeRecorder = `/******************
+《【教程】【音频流】【上传】实时转码并上传-pcm固定帧大小》
+作者：高坚果
+时间：2022-04-26 20:58:37
+
+通过onProcess回调可实现录音的实时处理；pcm格式拥有极速转码特性，能做到边录音边转码，流式的将数据进行上传；涉及Recorder两个核心方法：mock、SampleData。
+
+pcm数据从中间任意位置（16位时为双字节 LE小端模式 Little Endian）截取出来都能正常播放，所以可以生成任意固定大小的帧，并且每帧均可独立播放；其他格式就没有这种特性了，比如mp3，截取出来的数据无法解码播放，必须满足特定的MP3帧格式才能播放；所以本demo只适用于pcm格式，不支持其他格式，其他格式如需按固定大小的数据帧上传到服务器，请参考《【教程】【音频流】【上传】实时转码并上传-通用版》。
+
+如果不需要获得最终结果，可实时清理缓冲数据，避免占用过多内存，想录多久就录多久。
+
+【pcm拼接】两个参数相同的pcm文件直接二进制拼接在一起即可成为长的pcm文件；
+本demo中已实现了多个pcm片段文件合并函数：Recorder.PCMMerge，此函数可移植到后端使用；
+方法文档：
+	Recorder.PCMMerge(fileBytesList,bitRate,sampleRate,True,False)
+		fileBytesList：[Uint8Array,...] 所有pcm文件列表，每项为一个文件Uint8Array二进制数组；列表内的所有pcm的比特率和采样率必须一致
+		bitRate: pcm的位数，取值8或16
+		sampleRate: pcm的采样率，比如16000
+		True: fn(fileBytes,duration,info) 合并成功回调
+				fileBytes：Uint8Array 为mp3二进制文件
+				duration：合并后的时长
+				info：{ sampleRate:123 //和参数一致 , bitRate:8 16 //和参数一致 }
+		False: fn(errMsg) 出错回调（此函数并未用到）
+
+【接收端要实时播放?】上传过来的数据都是一小段一小段的数据片段文件（每一段均可独立正常播放），接收端可以进行缓冲，实时的解码成PCM进行播放，可以参考《【教程】【音频流】【播放】实时解码播放音频片段》使用BufferStreamPlayer插件来播放。
+******************/
+var testSampleRate=16000;
+var testBitRate=16;
+
+var SendFrameSize=3200;/**** 每次发送指定二进制数据长度的数据帧，单位字节，16位pcm取值必须为2的整数倍，8位随意。
+16位16khz的pcm 1秒有：16000hz*16位/8比特=32000字节的数据，默认配置3200字节每秒发送大约10次
+******/
+
+//重置环境，每次开始录音时必须先调用此方法，清理环境
+var RealTimeSendTryReset=function(){
+	realTimeSendTryChunks=null;
+};
+
+var realTimeSendTryNumber;
+var transferUploadNumberMax;
+var realTimeSendTryChunk;
+var realTimeSendTryChunks;
+
+//=====实时处理核心函数==========
+var RealTimeSendTry=function(buffers,bufferSampleRate,isClose){
+	if(realTimeSendTryChunks==null){
+		realTimeSendTryNumber=0;
+		transferUploadNumberMax=0;
+		realTimeSendTryChunk=null;
+		realTimeSendTryChunks=[];
+	};
+	//配置有效性检查
+	if(testBitRate==16 && SendFrameSize%2==1){
+		Runtime.Log("16位pcm SendFrameSize 必须为2的整数倍",1);
+		return;
+	};
+	
+	var pcm=[],pcmSampleRate=0;
+	if(buffers.length>0){
+		//借用SampleData函数进行数据的连续处理，采样率转换是顺带的，得到新的pcm数据
+		var chunk=Recorder.SampleData(buffers,bufferSampleRate,testSampleRate,realTimeSendTryChunk);
+		
+		//清理已处理完的缓冲数据，释放内存以支持长时间录音，最后完成录音时不能调用stop，因为数据已经被清掉了
+		for(var i=realTimeSendTryChunk?realTimeSendTryChunk.index:0;i<chunk.index;i++){
+			buffers[i]=null;
+		};
+		realTimeSendTryChunk=chunk;//此时的chunk.data就是原始的音频16位pcm数据（小端LE），直接保存即为16位pcm文件、加个wav头即为wav文件、丢给mp3编码器转一下码即为mp3文件
+		
+		pcm=chunk.data;
+		pcmSampleRate=chunk.sampleRate;
+		
+		if(pcmSampleRate!=testSampleRate)//除非是onProcess给的bufferSampleRate低于testSampleRate
+			throw new Error("不应该出现pcm采样率"+pcmSampleRate+"和需要的采样率"+testSampleRate+"不一致");
+	};
+	
+	//将pcm数据丢进缓冲，凑够一帧发送，缓冲内的数据可能有多帧，循环切分发送
+	if(pcm.length>0){
+		realTimeSendTryChunks.push({pcm:pcm,pcmSampleRate:pcmSampleRate});
+	};
+	
+	//从缓冲中切出一帧数据
+	var chunkSize=SendFrameSize/(testBitRate/8);//8位时需要的采样数和帧大小一致，16位时采样数为帧大小的一半
+	var pcm=new Int16Array(chunkSize),pcmSampleRate=0;
+	var pcmOK=false,pcmLen=0;
+	for1:for(var i1=0;i1<realTimeSendTryChunks.length;i1++){
+		var chunk=realTimeSendTryChunks[i1];
+		pcmSampleRate=chunk.pcmSampleRate;
+		
+		for(var i2=chunk.offset||0;i2<chunk.pcm.length;i2++){
+			pcm[pcmLen]=chunk.pcm[i2];
+			pcmLen++;
+			
+			//满一帧了，清除已消费掉的缓冲
+			if(pcmLen==chunkSize){
+				pcmOK=true;
+				chunk.offset=i2+1;
+				for(var i3=0;i3<i1;i3++){
+					realTimeSendTryChunks.splice(0,1);
+				};
+				break for1;
+			}
+		}
+	};
+	
+	//缓冲的数据不够一帧时，不发送 或者 是结束了
+	if(!pcmOK){
+		if(isClose){
+			var number=++realTimeSendTryNumber;
+			TransferUpload(number,null,0,null,isClose);
+		};
+		return;
+	};
+	
+	//16位pcm格式可以不经过mock转码，直接发送new Blob([pcm.buffer],{type:"audio/pcm"}) 但8位的就必须转码，通用起见，均转码处理，pcm转码速度极快
+	var number=++realTimeSendTryNumber;
+	var encStartTime=Date.now();
+	var recMock=Recorder({
+		type:"pcm"
+		,sampleRate:testSampleRate //需要转换成的采样率
+		,bitRate:testBitRate //需要转换成的比特率
+	});
+	recMock.mock(pcm,pcmSampleRate);
+	recMock.stop(function(blob,duration){
+		blob.encTime=Date.now()-encStartTime;
+		
+		//转码好就推入传输
+		TransferUpload(number,blob,duration,recMock,false);
+		
+		//循环调用，继续切分缓冲中的数据帧，直到不够一帧
+		RealTimeSendTry([], 0, isClose);
+	},function(msg){
+		//转码错误？没想到什么时候会产生错误！
+		Runtime.Log("不应该出现的错误:"+msg,1);
+	});
+};
+
+
+
+//=====数据传输函数==========
+var TransferUpload=function(number,blobOrNull,duration,blobRec,isClose){
+	transferUploadNumberMax=Math.max(transferUploadNumberMax,number);
+	if(blobOrNull){
+		var blob=blobOrNull;
+		var encTime=blob.encTime;
+		
+		//*********发送方式一：Base64文本发送***************
+		var reader=new FileReader();
+		reader.onloadend=function(){
+			var base64=(/.+;\s*base64\s*,\s*(.+)$/i.exec(reader.result)||[])[1];
+			
+			//可以实现
+			//WebSocket send(base64) ...
+			//WebRTC send(base64) ...
+			//XMLHttpRequest send(base64) ...
+			
+			//这里啥也不干
+		};
+		reader.readAsDataURL(blob);
+		
+		//*********发送方式二：Blob二进制发送***************
+		//可以实现
+		//WebSocket send(blob) ...
+		//WebRTC send(blob) ...
+		//XMLHttpRequest send(blob) ...
+		
+		
+		//****这里仅 console.log一下 意思意思****
+		var numberFail=number<transferUploadNumberMax?'<span style="color:red">顺序错乱的数据，如果要求不高可以直接丢弃</span>':"";
+		var logMsg="No."+(number<100?("000"+number).substr(-3):number)+numberFail;
+		
+		Runtime.LogAudio(blob,duration,blobRec,logMsg+"花"+("___"+encTime).substr(-3)+"ms");
+		
+		if(true && number%100==0){//emmm....
+			Runtime.LogClear();
+		};
+	};
+	
+	if(isClose){
+		Runtime.Log("No."+(number<100?("000"+number).substr(-3):number)+":已停止传输");
+	};
+};
+
+
+
+
+
+
+
+
+//=====pcm文件合并核心函数==========
+Recorder.PCMMerge=function(fileBytesList,bitRate,sampleRate,True,False){
+	//计算所有文件总长度
+	var size=0;
+	for(var i=0;i<fileBytesList.length;i++){
+		size+=fileBytesList[i].byteLength;
+	};
+	
+	//全部直接拼接到一起
+	var fileBytes=new Uint8Array(size);
+	var pos=0;
+	for(var i=0;i<fileBytesList.length;i++){
+		var bytes=fileBytesList[i];
+		fileBytes.set(bytes,pos);
+		pos+=bytes.byteLength;
+	};
+	
+	//计算合并后的总时长
+	var duration=Math.round(size*8/bitRate/sampleRate*1000);
+	
+	True(fileBytes,duration,{ bitRate:bitRate,sampleRate:sampleRate });
+};
+
+
+
+//=====以下代码无关紧要，音频数据源，采集原始音频用的==================
+//加载框架
+Runtime.Import([
+	{url:RootFolder+"/src/recorder-core.js",check:function(){return !window.Recorder}}
+	,{url:RootFolder+"/src/engine/wav.js",check:function(){return !Recorder.prototype.wav}}
+	,{url:RootFolder+"/src/engine/pcm.js",check:function(){return !Recorder.prototype.pcm}}
+]);
+
+//显示控制按钮
+Runtime.Ctrls([
+	{name:"开始录音和按固定帧大小传输pcm",click:"recStart"}
+	,{name:"停止录音",click:"recStop"}
+	,{name:"合并日志中所有pcm",click:"testLogsMergeAll"}
+]);
+
+
+//合并日志中的所有pcm文件成一个文件
+var testLogsMergeAll=function(){
+	var audios=Runtime.LogAudios;
+	
+	var bitRate=testBitRate,sampleRate=testSampleRate;
+	var idx=-1 +1,files=[],exclude=0,badConfig=0;
+	var read=function(){
+		idx++;
+		if(idx>=audios.length){
+			var tips=(exclude?"，已排除"+exclude+"个非pcm文件":"")
+				+(badConfig?"，已排除"+badConfig+"个参数不同pcm文件":"");
+			if(!files.length){
+				Runtime.Log("至少需要录1段pcm"+tips,1);
+				return;
+			};
+			Recorder.PCMMerge(files,bitRate,sampleRate,function(file,duration,info){
+				Runtime.Log("合并"+files.length+"个成功"+tips,2);
+				info.type="pcm";
+				Runtime.LogAudio(new Blob([file.buffer],{type:"audio/pcm"}),duration,{set:info},"已合并");
+			},function(msg){
+				Runtime.Log(msg+"，请清除日志后重试",1);
+			});
+			return;
+		};
+		
+		var logItem=audios[idx],logSet=logItem.set||{};
+		if(!/pcm/.test(logItem.blob.type)){
+			exclude++;
+			read();
+			return;
+		};
+		if(bitRate!=logSet.bitRate || sampleRate!=logSet.sampleRate){
+			badConfig++;//音频参数不一致的，不合并
+			read();
+			return;
+		};
+		
+		var reader=new FileReader();
+		reader.onloadend=function(){
+			files.push(new Uint8Array(reader.result));
+			read();
+		};
+		reader.readAsArrayBuffer(logItem.blob);
+	};
+	read();
+};
+
+
+
+//调用录音
+var rec;
+function recStart(){
+	if(rec){
+		rec.close();
+	};
+	rec=Recorder({
+		type:"unknown"
+		,onProcess:function(buffers,powerLevel,bufferDuration,bufferSampleRate){
+			Runtime.Process.apply(null,arguments);
+			
+			//推入实时处理，因为是unknown格式，buffers和rec.buffers是完全相同的，只需清理buffers就能释放内存。
+			RealTimeSendTry(buffers,bufferSampleRate,false);
+		}
+	});
+	
+	var t=setTimeout(function(){
+		Runtime.Log("无法录音：权限请求被忽略（超时假装手动点击了确认对话框）",1);
+	},8000);
+	
+	rec.open(function(){//打开麦克风授权获得相关资源
+		clearTimeout(t);
+		rec.start();//开始录音
+		
+		RealTimeSendTryReset();//重置环境，开始录音时必须调用一次
+	},function(msg,isUserNotAllow){
+		clearTimeout(t);
+		Runtime.Log((isUserNotAllow?"UserNotAllow，":"")+"无法录音:"+msg, 1);
+	});
+};
+function recStop(){
+	rec.close();//直接close掉即可，这个例子不需要获得最终的音频文件
+	
+	RealTimeSendTry([],0,true);//最后一次发送
+};`
+		setVal(codeRecorder)
+		// console.log(key, name);
+		// var path="runtime-codes/"+key+".js";
+		// Runtime.Log("正在加载"+path+"...");
+		// $.ajax({
+		// 	url:path
+		// 	,dataType:"text"
+		// 	,success:function(data){
+		// 		setVal(data);
+				
+		// 		Runtime.Log("注意：编辑框内的代码是由本工具提供的运行环境支持，如果要copy代码到其他html内使用，需要把Runtime相关的调用删除或使用别的代码代替。","#f60");
+				
+		// 		var rn=(/《(.+?)》/.exec(data)||[])[1]||"";
+		// 		if(name){
+		// 			if(name.indexOf(rn)==-1){
+		// 				console.warn("demo js文件内名称和本页面内手写的名称不一致",rn,name);
+		// 			};
+		// 			Runtime.Log("已在编辑框内显示了《"+name+"》Demo的源码，可运行查看效果");
+		// 		}else{
+		// 			Runtime.Log("已加载《"+(rn||path)+"》源码，可运行查看效果",2);
+		// 		};
+				
+		// 		end&&end();
+		// 	}
+		// 	,error:function(){
+		// 		Runtime.Log("加载指定的"+path+'失败，请到<a href="https://github.com/xiangyuecn/Recorder/tree/master/assets/runtime-codes" target="_blank">/assets/runtime-codes</a>目录内查阅源码',1);
+		// 	}
+		// });
+	};
+	Runtime.UseDemoCode=function(id,click){
+		var end=function(){
+			if(click){
+				$("html,body").animate({scrollTop:$(".mainCodeBtn").offset().top-200},300);
+			}
+		};
+		var o=DemoCodeList[id];
+		if(o.code){
+			setVal(o.code);
+			Runtime.Log("已在编辑框内显示了《"+(id+1)+". "+DemoCodeList[id].name+"》Demo的源码，可运行查看效果");
+			end();
+		}else{
+			loadDemoCode(o.jsn,(id+1)+". "+o.name, end);
+		};
+	};
+	
+	DemoCodeList.sort(function(a,b){return b.sort-a.sort});
+	var html=[];
+	for(var i=0;i<DemoCodeList.length;i++){
+		var o=DemoCodeList[i];
+		var href='href="?';
+		if(o.idf){
+			href+="idf="+encodeURIComponent(o.idf);
+		}else if(o.jsn){
+			href+="jsname="+encodeURIComponent(o.jsn);
+		}else{
+			href="";
+		};
+		href&&(href+='"');
+		html.push('<div style="padding:8px 0">'+(i+1)+'. <a '+href+' onclick="Runtime.UseDemoCode('+i+',1);return false">'+o.name+'</a></div>');
+	};
+	$(".demoList").html(html.join("\n"));
+	
+	
+	var readMetas=function(txt){
+		var exp=/^\s*@(\w+) (```)?"([\S\s]*?)"\2|^\s*@[\u00ff-\uffff]+\((\w+)\)：(?:```"([\S\s]*?)"```|([^\s]*))/mg,m;
+		var headers={};
+		while(m=exp.exec(txt)){
+			if(m[1]){
+				headers[m[1]]=m[3]||"";
+			}else{
+				headers[m[4]]=m[6]||m[5]||"";
+			}
+		};
+		return headers;
+	};
+	var checkTrust=function(data){
+		//验证作者的公钥认证信息
+		var trust=JSON.parse(data.RSA_Trust);
+		var root;
+		for(var i=0;i<TrustRSARoots.length;i++){
+			if(TrustRSARoots[i].ID==trust.Root){
+				root=TrustRSARoots[i];
+			};
+		};
+		trust.root=root;
+		var ok=false;
+		if(root){
+			var txt=trust.Ver+"_"+trust.Time+"_"+trust.Root+"_"+trust.Name+"_"+data.RSA_Public_Exponent+"_"+data.RSA_Modulus;
+			
+			var rsa=RSA(root.Modulus,root.Public);
+			ok=rsa.verify(txt,trust.Trust,"SHA1");
+		};
+		return ok?trust:null;
+	};
+	var getMetaExp=function(){
+		return /\/\*@Runtime Meta@[\S\s]+?@Runtime@\*\//ig;
+	};
+	var keepMetaKeys;
+	Runtime.CodePubClick=function(){
+		var val=edit.getValue();
+		Runtime.Log("-----------");
+		var store=JSON.parse(localStorage["RuntimeEditorData"]||"{}");
+		
+		//从源码中恢复部分参数
+		var meta=(getMetaExp().exec(val)||[])[0];
+		var data=readMetas(meta);
+		store.Ver=data.Ver;
+		store.Title=data.Title;
+		store.Desc=data.Desc;
+		
+		store.Author=store.Author||data.Author;
+		store.RSA_Public_Exponent=store.RSA_Public_Exponent||data.RSA_Public_Exponent;
+		store.RSA_Modulus=store.RSA_Modulus||data.RSA_Modulus;
+		store.RSA_Trust=store.RSA_Trust||data.RSA_Trust;
+		
+		
+		var exp=/\/\*@Runtime Editor@[\S\s]+?@Runtime@\*\//ig;
+		var m=exp.exec(val);
+		if(!m){
+			keepMetaKeys=[];
+			var tmp=SignRuntimeEditor.replace(/\$\{(\w+)\}/g,function(a,b){
+				keepMetaKeys.push(b);
+				return store[b]||"";
+			});
+			setVal(val+"\n\n"+tmp);
+			Runtime.Log("请完善Runtime Editor中的代码和作者信息，然后再次点击分发按钮");
+			return;
+		};
+		exp.lastIndex=0;
+		val=val.replace(exp,"");
+		val=val.replace(getMetaExp(),"");
+		val=val.replace(/^\s+|\s+$/g,"");
+		
+		var data=readMetas(m[0]);
+		console.log("Runtime Editor",data);
+		
+		if(!data.RSA_Modulus||!data.RSA_Private_Exponent||!data.RSA_Public_Exponent){
+			Runtime.Log("请填写你的源码签名RSA私钥参数",1);
+			return;
+		};
+		if(data.RSA_Trust){
+			//验证作者的公钥认证信息
+			var trust=checkTrust(data);
+			if(!trust){
+				Runtime.Log("RSA_Trust信息无法通过验证，请检查认证信息的正确性",1);
+				return;
+			};
+			
+			//将作者改成验证的名称
+			data.Author=trust.Name;
+		}else{
+			Runtime.Log("没有RSA_Trust信息，此分发代码可能被识别为非原作者",1);
+		};
+		
+		var meta="/*@Runtime Meta@** 《"+data.Title+"》";
+		meta+="\n@源码标题(Title)："+data.Title;
+		meta+="\n@作者(Author)："+data.Author;
+		meta+="\n@版本(Ver)："+data.Ver;
+		meta+="\n@时间："+new Date().toLocaleString();
+		meta+="\n@描述(Desc)：```\""+data.Desc+"\"```";
+		meta+="\n-----------";
+		meta+="\n@公钥指数(RSA_Public_Exponent)："+data.RSA_Public_Exponent;
+		meta+="\n@模数(RSA_Modulus)："+data.RSA_Modulus;
+		meta+="\n@认证信息(RSA_Trust)：```\""+data.RSA_Trust+"\"```";
+		meta+="\n@签名(RSA_Sign)：";
+		meta+="\n**@Runtime@*/";
+		val=meta+"\n\n\n"+val;
+		
+		//签名
+		var rsa=RSA(data.RSA_Modulus,data.RSA_Public_Exponent,data.RSA_Private_Exponent);
+		var sign="";
+		try{
+			var st=rsa.sign(val,"SHA1");
+			if(rsa.verify(val,st,"SHA1")){
+				sign=st; 
+			};
+		}catch(e){}
+		if(!sign){
+			Runtime.Log("签名RSA私钥无效，请检查参数",1);
+			return;
+		};
+		val=val.replace(/@签名\(RSA_Sign\)：/,"@签名(RSA_Sign)："+sign);
+		
+		//生成url
+		var sha1=SHA1(val);
+		var urlb64=btoa(unescape(encodeURIComponent(val)))
+			.replace(/\+/g,"-")
+			.replace(/\//g,"_")
+			.replace(/=/g,".");
+		var url="https://xiangyuecn.gitee.io/recorder/assets/"+encodeURIComponent("工具-代码运行和静态分发Runtime")+".html#sha1="+sha1+"&shareCode=v1_"+encodeURIComponent(urlb64);
+		
+		Runtime.Log('<textarea style="width:300px;height:80px">'+url+'</textarea>');
+		Runtime.Log("已分发，url大小"+url.length+"b，<a href='"+url+"' target='_blank'>地址</a> <a href='https://www.ft12.com/' target='_blank'>短网址</a>",2);
+		
+		//存储可存储备用的公开数据
+		localStorage["RuntimeEditorData"]=JSON.stringify({
+			Author:data.Author
+			,RSA_Public_Exponent:data.RSA_Public_Exponent
+			,RSA_Modulus:data.RSA_Modulus
+			,RSA_Trust:data.RSA_Trust
+		});
+	};
+	
+	
+	//显示代码
+	var viewUrlCode=function(href){
+		var idf=decodeURIComponent((/[?#&]idf=([^&#]+)/.exec(href)||[])[1]||"");
+		var jsname=decodeURIComponent((/[?#&]jsname=([\w\-\.]+)/.exec(href)||[])[1]||"");
+		var sha1=(/[?#&]sha1=([^&#]+)/.exec(href)||[])[1];
+		var shareCode=/[?#&]shareCode=v(\d+)_([^&#]+)/.exec(href);
+		if(!shareCode){
+			if(jsname){
+				loadDemoCode(jsname);
+				return;
+			};
+			
+			if(idf){
+				for(var i=0;i<DemoCodeList.length;i++){
+					if(DemoCodeList[i].idf==idf){
+						Runtime.UseDemoCode(i);
+						return;
+					};
+				};
+				Runtime.Log("未知启动标识："+idf,1);
+				return;
+			};
+			
+			Runtime.Log("初始化完成，可以编写代码，或者点击一个Demo来编辑",2);
+			return;
+		};
+		var shareVer=shareCode[1];
+		var tips="请检查链接是否完整。因为太长的url可能会被浏览器截断导致代码不完整，可通过把完整的url粘贴到上面的代码编辑框内，程序将尝试解析还原出代码。";
+		try{
+			var code=decodeURIComponent(shareCode[2])
+				.replace(/\-/g,"+")
+				.replace(/\_/g,"/")
+				.replace(/\./g,"=");
+			try{
+				code=atob(code);
+			}catch(e){
+				Runtime.Log("分发的源码Base64解码失败，"+tips,1);
+				return;
+			};
+			code=decodeURIComponent(escape(code));
+			
+			if(sha1!=SHA1(code)){
+				Runtime.Log("分发的源码校验和不一致，"+tips,1);
+				return;
+			};
+		}catch(e){
+			Runtime.Log("分发的源码解码失败，"+tips+"<br><br>"+e.stack,1);
+			return;
+		};
+		
+		var meta=(getMetaExp().exec(code)||[])[0]||"";
+		var data=readMetas(meta);
+		if(!data.RSA_Modulus||!data.RSA_Public_Exponent||!data.RSA_Sign){
+			Runtime.Log("此分发的源码没有作者签名，请联系作者",1);
+			return;
+		};
+		
+		//验证签名
+		var code2=code.replace(/@签名\(RSA_Sign\)：[^\s]+/,"@签名(RSA_Sign)：");
+		var rsa=RSA(data.RSA_Modulus,data.RSA_Public_Exponent);
+		if(!rsa.verify(code2,data.RSA_Sign,"SHA1")){
+			Runtime.Log("此分发的源码的作者签名无效，请联系作者",1);
+			return;
+		};
+		
+		//验证认证信息
+		var isTrust=false,trust;
+		if(data.RSA_Trust){
+			//验证作者的公钥认证信息
+			trust=checkTrust(data);
+			if(!trust){
+				//完全被篡改
+				Runtime.Log("作者提供的认证签名信息无法通过验证，这往往代表着代码已被篡改",1);
+			}else{
+				isTrust=true;
+			};
+		};
+		
+		setVal(code);
+		
+		if(isTrust){
+			Runtime.Log("已加载《"+data.Title+"》作者:"+data.Author+"，作者身份已通过 \""+trust.root.Name+"\" 的确认",2);
+		}else{
+			Runtime.Log("已加载《"+data.Title+"》作者自称为:"+data.Author+"，未能进行鉴定，请自行分辨",1);
+			
+			var n=0;
+			var run=function(){
+				n++;
+				$("body").css("background",n%2?"red":"#f5f5f5");
+			};
+			run();
+			trustBGInt=setInterval(run,1000);
+		};
+	};
+	var trustBGInt;
+	function clearTrustBGInt(){
+		if(trustBGInt){
+			clearInterval(trustBGInt);
+			trustBGInt=0;
+			$("body").css("background","#f5f5f5");
+		};
+	};
+	
+	viewUrlCode('https://xiangyuecn.gitee.io/recorder/assets/%E5%B7%A5%E5%85%B7-%E4%BB%A3%E7%A0%81%E8%BF%90%E8%A1%8C%E5%92%8C%E9%9D%99%E6%80%81%E5%88%86%E5%8F%91Runtime.html?jsname=teach.realtime.encode_transfer_frame_pcm');
+});
+
+
+
+var SignRuntimeEditor=(function(){
+/*@Runtime Editor@* 【代码分发信息和作者】
+----------------
+@Author "${Author}" 作者（如果填了RSA_Trust，此处会被覆盖），请填入引号中，下同
+@Ver "${Ver}" 版本号
+@Title "${Title}" 代码标题
+@Desc ```"${Desc}"``` 描述信息，可多行
+----------------
+源码签名RSA私钥参数（Base64），填入下面的引号中：
+@RSA_Private_Exponent "" 私钥指数 D
+@RSA_Public_Exponent "${RSA_Public_Exponent}" 公钥指数 E 一般为AQAB
+@RSA_Modulus "${RSA_Modulus}" 模数 N
+
+RSA私钥用于确保分发出去的代码是作者编写的未被篡改，如果你没有RSA私钥，可以用openssl生成一个，然后提取出上面这3个参数。
+
+或者在本页面控制台内输入 rsa=RSA(1024);console.log(rsa.getPrivate());console.log(rsa.getPublic());console.log(rsa.getModulus()) 即可获得。
+----------------
+作者应保管好私钥，否则将无法验证作者身份。正常情况下作者的身份是不被信任的，如果需要被信任，可申请本页面TrustRSARoots中的秘钥给你的公钥进行签名认证，然后将认证信息填入下面的引号中：
+@RSA_Trust ```"${RSA_Trust}"```
+----------------
+*@Runtime@*/}).toString().replace(/^function\s*\(\)\s*\{|\s*\}$/g,"");
+		
+var DemoCodeList=[];
+function AddDemoCode(sort,idf,name,fn,jsn){
+	DemoCodeList.push({sort:sort?sort:666-DemoCodeList.length,idf:idf,name:name,code:fn&&fn.toString().replace(/^function\s*\(\)\s*\{|\s*\}$/g,""),jsn:jsn});
+};
+</script>
+
+
+
+
+
+
+
+
+
+<script>
+AddDemoCode(-999,"self_trust","【工具】TrustRSARoots作者公钥认证",function(){/******************
+《TrustRSARoots公钥认证》
+作者：高坚果
+时间：2019-9-12 21:59:19
+******************/
+Runtime.Log("开始认证...");
+(function(){
+	var info={
+		Name:"" //【填写】作者名称
+		,Modulus:"" //【填写】待认证模数
+		,Public:"AQAB" //【填写】待认证公钥指数
+	};
+
+	if(!info.Name || !info.Public || !info.Modulus){
+		Runtime.Log("info信息不全，请在代码中填写完整",1);
+		return;
+	};
+
+	var idx=0;
+	if(TrustRSARoots.length>1){
+		var roots=[];
+		for(var i=0;i<TrustRSARoots.length;i++){
+			var o=TrustRSARoots[i];
+			roots.push((i+1)+"："+o.Name);
+		};
+		var i=prompt("请选择Root秘钥序号：\n"+roots.join("\n"),1);
+		if(i==null){
+			Runtime.Log("已取消操作");
+			return;
+		};
+		idx=(+i)-1;
+	};
+	var item=TrustRSARoots[idx];
+	if(!item){
+		Runtime.Log("序号无效",1);
+		return;
+	};
+	
+	var d=prompt("请输入\""+item.Name+"\"的私钥Private Exponent Base64");
+	if(!d){
+		Runtime.Log("已取消操作");
+		return;
+	};
+	
+	var rsa=RSA(item.Modulus,item.Public,d);
+	
+	//验证秘钥是否正确
+	if(rsa.sign(item.ID)!=item.SelfSign){
+		Runtime.Log(item.Name+"私钥错误",1);
+		return;
+	};
+	if(!rsa.verify(item.ID,item.SelfSign)){
+		Runtime.Log(item.Name+"公钥似乎是错的",1);
+		return;
+	};
+	
+	var ver="1.0";
+	var time=""+Date.now();
+	var data=ver+"_"+time+"_"+item.ID+"_"+info.Name+"_"+info.Public+"_"+info.Modulus;
+	var sign=rsa.sign(data,"SHA1");
+	var rtv=JSON.stringify({
+		Ver:ver
+		,Time:time
+		,Root:item.ID
+		,Name:info.Name
+		,Trust:sign
+	});
+	
+	Runtime.Log('<textarea style="width:300px;height:80px">'+rtv+'</textarea>');
+	Runtime.Log("已签名",2);
+})();	
+});
+
+
+AddDemoCode(999,"self_base_demo","【教程】本工具使用示例，和Recorder基础用法",function(){/******************
+《本工具使用示例，和Recorder基础用法》
+作者：高坚果
+时间：2019-9-12 21:59:19
+
+工具的编辑框内可编写代码然后运行；代码内可调用本工具提供的Runtime的方法，使用了这些方法时，如果要copy代码到其他html内使用，需要把Runtime相关的调用删除或使用别的代码代替。
+
+可调用Runtime方法列表：
+	RootFolder:"" 当前程序根目录，结尾不含/
+
+	Runtime.Import(jsList) 导入js列表，只能调用一次，jsList:[{url:"",check:fn()},...] check返回false跳过这条的导入
+
+	Runtime.Ctrls(ctrls) 在控制区显示按钮，只能调用一次，ctrls:[{name:"按钮名称",click:"函数名称",cls:"class name"},{html:"html代码"},{choiceFile:{multiple:true,name:"音乐",title:"转换",mime:"audio/*",process:fn(fileName,arrayBuffer,filesCount,fileIdx,endCall)}},...]
+	
+	Runtime.ReadBlob(blob,call) 读取blob为arrayBuffer,call(arrayBuffer)
+	
+	Runtime.DecodeAudio(fileName,arrayBuffer,True,False) 解码一个音频文件，True({sampleRate:采样率,duration:音频时长,srcBlob:Blob对象,type:从文件名中提取的音频类型,data:[Int16,...]pcm数据})，False(errMsg)
+	
+	Runtime.Log(msgHtml,color) 在日志区显示日志html，color:0默认，1红色，2绿色，其他指定颜色
+
+	Runtime.LogAudio(blob,duration,rec,msgHtml) 在日志区显示一个音频的日志信息，rec只要对象内有set属性就行
+
+	Runtime.Process(buffers,powerLevel,bufferDuration,bufferSampleRate) 接受Recorder的实时回调，驱动图形显示
+******************/
+
+/*****加载框架，把这几个js用script标签引入到html就可以进行mp3录音*****/
+Runtime.Import([
+	{url:RootFolder+"/src/recorder-core.js",check:function(){return !window.Recorder}}
+	,{url:RootFolder+"/src/engine/mp3.js",check:function(){return !Recorder.prototype.mp3}}
+	,{url:RootFolder+"/src/engine/mp3-engine.js",check:function(){return !Recorder.lamejs}}
+]);
+
+/*****显示控制按钮和界面控制，这几坨代码无关紧要*****/
+Runtime.Ctrls([
+	{name:"打开录音，请求权限",click:"recOpen"}
+	,{name:"开始录音",click:"recStart"}
+	,{name:"结束录音，并释放资源",click:"recStop"}
+]);
+
+
+/*****录音核心代码*****/
+var rec;
+/**调用open打开录音请求好录音权限**/
+var recOpen=function(){//一般在显示出录音按钮或相关的录音界面时进行此方法调用，后面用户点击开始录音时就能畅通无阻了
+	rec=Recorder({
+		type:"mp3",sampleRate:16000,bitRate:16
+		,onProcess:function(buffers,powerLevel,bufferDuration,bufferSampleRate){
+			console.log(buffers, powerLevel,bufferDuration,bufferSampleRate, '______________________');
+			Runtime.Process.apply(null,arguments);
+		}
+	});
+	
+	//var dialog=createDelayDialog(); 我们可以选择性的弹一个对话框：为了防止移动端浏览器存在第三种情况：用户忽略，并且（或者国产系统UC系）浏览器没有任何回调，此处demo省略了弹窗的代码
+	//if(Is Mobile)//只针对移动端，demo偷一下懒
+	var t=setTimeout(function(){
+		Runtime.Log("无法录音：权限请求被忽略（超时假装手动点击了确认对话框）",1);
+	},8000);
+	
+	Runtime.Log("正在打开录音，请求麦克风权限...");
+	rec.open(function(){
+		clearTimeout(t);
+		
+		Runtime.Log("已打开录音，可以点击开始了",2);
+		
+		//rec.start() 此处可以立即开始录音，但不建议这样编写，因为open是一个延迟漫长的操作，通过两次用户操作来分别调用open和start是推荐的最佳流程
+	},function(msg,isUserNotAllow){//用户拒绝未授权或不支持
+		clearTimeout(t);
+		Runtime.Log((isUserNotAllow?"UserNotAllow，":"")+"无法录音:"+msg, 1);
+	});
+};
+/**开始录音**/
+function recStart(){//打开了录音后才能进行start、stop调用，demo偷一下懒，按钮、判断啥都没有处理
+	rec.start();
+};
+/**结束录音**/
+function recStop(){
+	rec.stop(function(blob,duration){
+		rec.close();//释放录音资源，当然可以不释放，后面可以连续调用start；但不释放时系统或浏览器会一直提示在录音，最佳操作是录完就close掉
+		
+		Runtime.LogAudio(blob,duration,rec);
+		rec=null;
+	},function(msg){
+		Runtime.Log("录音失败:"+msg, 1);
+		rec.close();//可以通过stop方法的第3个参数来自动调用close
+		rec=null;
+	});
+};
+});
+</script>
+
+
+<script>
+(function(){
+var demos=[
+
+{n:"【Demo库】【格式转换】-mp3等格式解码转成其他格式",k:"lib.transform.mp32other"}
+,{n:"【Demo库】【格式转换】-wav格式转成其他格式",k:"lib.transform.wav2other"}
+,{n:"【Demo库】【格式转换】-amr格式转成其他格式",k:"lib.transform.amr2other"}
+
+,{n:"【教程】【音频流】【上传】实时转码并上传-通用版",k:"teach.realtime.encode_transfer"}
+,{n:"【教程】【音频流】【上传】实时转码并上传-mp3专版",k:"teach.realtime.encode_transfer_mp3"}
+,{n:"【教程】【音频流】【上传】实时转码并上传-pcm固定帧大小",k:"teach.realtime.encode_transfer_frame_pcm"}
+
+
+,{n:"【教程】【音频流】【播放】实时解码播放音频片段",k:"teach.realtime.decode_buffer_stream_player"}
+,{n:"【教程】【ASR】实时语音识别、音频文件转文字-阿里云版",k:"teach.realtime.asr.aliyun.short"}
+,{n:"【教程】实时录制处理audio、video标签的captureStream流",k:"teach.source_stream.capture_stream"}
+
+,{n:"【Demo库】【文件合并】-mp3多个片段文件合并",k:"lib.merge.mp3_merge"}
+,{n:"【Demo库】【文件合并】-wav多个片段文件合并",k:"lib.merge.wav_merge"}
+
+,{n:"【教程】实时多路音频混音",k:"teach.realtime.mix_multiple"}
+,{n:"【教程】变速变调音频转换",k:"teach.sonic.transform"}
+,{n:"【教程】新录音从老录音接续、或录制中途插入音频",k:"teach.env_in.follow"}
+,{n:"【教程】DTMF（电话拨号按键信号）解码、编码",k:"teach.dtmf.decode_and_encode"}
+
+,{n:"【Demo库】PCM采样率提升",k:"lib.samplerate.raise"}
+,{n:"【测试】WebM格式解析并提取音频",k:"test.webm.extract_audio"}
+,{n:"【测试】音频可视化相关插件测试",k:"test.extensions.visualization"}
+
+];
+
+var markdown=[];
+for(var i=0;i<demos.length;i++){
+	var o=demos[i];
+	markdown.push((i+1)+'. ['+o.n+'](https://xiangyuecn.gitee.io/recorder/assets/工具-代码运行和静态分发Runtime.html?jsname='+o.k+')');
+	AddDemoCode(199-i,"",o.n,null,o.k);
+};
+
+console.log("以下链接copy到README.【Demo片段列表】中");
+console.log("\n\n\n"+markdown.join("\n")+"\n\n\n");
+})();
+</script>
+
+
+
+<script>
+if(/mobile/i.test(navigator.userAgent)){
+	//移动端加载控制台组件
+	var elem=document.createElement("script");
+	elem.setAttribute("type","text/javascript");
+	elem.setAttribute("src","https://xiangyuecn.gitee.io/recorder/assets/ztest-vconsole.js");
+	document.body.appendChild(elem);
+	elem.onload=function(){
+		new VConsole();
+	};
+};
+</script>
+
+<script>
+</script>
+
+
+</body>
+</html>
